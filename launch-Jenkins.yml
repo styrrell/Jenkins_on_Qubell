@@ -1,0 +1,85 @@
+application:
+  configuration:
+    input.jenkins-port: 8080
+    # input.image: "us-east-1/ami-fb8e9292"
+    # input.image-user: "ec2-user"
+    # Ubuntu 14.04
+    input.image: "us-east-1/ami-018c9568"
+    input.image-user: "ubuntu"
+    input.instance-size: "t1.micro"
+    # input.instance-size: "m1.small"
+    input.recipe-url: "https://github.com/styrrell/Jenkins_on_Qubell/blob/master/jenkins-chef-cookbooks.tar.gz?raw=true"
+
+  interfaces:
+    input:
+      jenkins-port: "bind(workflow#input.jenkins-port)"
+      image: "bind(workflow#input.image)"
+      image-user: "bind(workflow#input.image-user)"
+      instance-size: "bind(workflow#input.instance-size)"
+      recipe-url: "bind(workflow#input.recipe-url)"
+    # manage:
+      # restart: "bind(workflow#actions.restart"
+    output:
+      jenkins-url: "bind(workflow#result.jenkins-url)"
+      server-ip: "bind(workflow#result.server-ip)"
+
+  components:
+    workflow:
+      type: workflow.Instance
+      interfaces:
+        input:
+          jenkins-port: configuration(int)
+          image: configuration(string)
+          image-user: configuration(string)
+          instance-size: configuration(string)
+          recipe-url: configuration(string)
+        # actions:
+          # restart: 
+        result:
+          jenkins-url: publish-signal(string)
+          server-ip: publish-signal(string)
+
+      configuration:
+        configuration.workflows:  
+          launch:
+            steps:
+              - provision-vm:
+                  action: provisionVms
+                  parameters:
+                    hardwareId: "{$.instance-size}"
+                    imageId: "{$.image}"
+                    vmIdentity: "{$.image-user}"
+                    roleName: default
+                  output:
+                    jenkins-host: ips
+
+              - install-jenkins:
+                  action: "chefsolo"
+                  precedingPhases: [ provision-vm ]
+                  parameters:
+                    roles: [ default ]
+                    runList: ["recipe[jenkins::master]"]
+                    recipeUrl: "{$.recipe-url}"
+                    # host:  "{$.jenkins-host}"
+                    jattrs:
+                      jenkins:
+                        master:
+                          install_method: "war"
+                  # output:
+                    # jenkins-url:"{$.jenkins-host}:8080"
+
+            return:
+              jenkins-host:
+                value: "{$.jenkins-host[0]}"
+              # jenkins-url:
+                # jenkins-url:"{$.jenkins-host}:8080"
+
+#          restart:
+#            steps:
+#              - restart-jenkins:
+#                  action: "chefsolo"
+#                  parameters:
+#                    roles: [ default ]
+#                    runList: [ "recipe[jenkins::restart-server]" ]
+#                    recipeUrl: "{$.recipe-url}"
+#
