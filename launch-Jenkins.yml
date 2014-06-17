@@ -53,9 +53,17 @@ application:
                   output:
                     jenkins-host: ips
 
-              - install-jenkins:
+              - install-java:
                   action: "chefsolo"
                   precedingPhases: [ provision-vm ]
+                  parameters:
+                    roles: [ default ]
+                    runList: ["recipe[jenkins::java]"]
+                    recipeUrl: "{$.recipe-url}"
+
+              - install-jenkins:
+                  action: "chefsolo"
+                  precedingPhases: [ install-java ]
                   parameters:
                     roles: [ default ]
                     runList: ["recipe[jenkins::master]"]
